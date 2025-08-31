@@ -1,0 +1,146 @@
+---
+title: "EDA on Diabetes Dataset"
+author: "Hekma Magdy"
+format: pdf
+editor: visual
+---
+
+# Introduction
+
+This report provides an Exploratory Data Analysis (EDA) of the Diabetes dataset .\
+The goal is to explore the patterns, distributions, and relationships between variables, and to understand the factors related to diabetes outcomes.
+
+# Dataset Description
+
+The dataset used in this project was obtained from **Kaggle** (Diabetes Dataset). It contains 768 observations and 9 variables related to diagnostic measurements for diabetes prediction.
+
+## Running Code
+
+***Loading data***
+
+```{r , message=FALSE, warning=FALSE}
+data = read.csv("C:/Users/Soliman - Store/Downloads/archive/diabetes.csv")
+```
+
+***Summary Statistics***
+
+```{r , message=FALSE, warning=FALSE}
+head(data)
+str(data)
+nrow(data)
+ncol(data)
+dim(data)
+
+library(dplyr)
+library(tidyr)
+
+numeric_cols <- c("Pregnancies", "Glucose", "BloodPressure", "SkinThickness",
+                  "Insulin", "BMI", "DiabetesPedigreeFunction", "Age")
+summary_table = data %>%
+  select(all_of(numeric_cols)) %>%
+  pivot_longer(cols = everything(), names_to = "Variable", values_to = "Value") %>%
+  group_by(Variable) %>%
+  summarise(
+    Mean   = mean(Value, na.rm = TRUE),
+    Median = median(Value, na.rm = TRUE),
+    SD     = sd(Value, na.rm = TRUE),
+    Min    = min(Value, na.rm = TRUE),
+    Max    = max(Value, na.rm = TRUE)
+  )
+summary_table
+```
+
+***Data Cleaning***
+
+During the initial exploration, several variables were found to contain zero values (e.g., **Glucose**, **BloodPressure**, **SkinThickness**, **Insulin**, and **BMI**). These values are not physiologically possible and should be treated as missing data. Therefore, zeros in these variables were replaced with `NA` for more accurate analysis.
+
+```{r , message=FALSE, warning=FALSE}
+
+data$Glucose[data$Glucose == 0] <- NA
+data$BloodPressure[data$BloodPressure == 0] <- NA
+data$SkinThickness[data$SkinThickness == 0] <- NA
+data$Insulin[data$Insulin == 0] <- NA
+data$BMI[data$BMI == 0] <- NA
+colSums(is.na(data))
+```
+
+***Outcome (Bar Plot)***
+
+```{r , message=FALSE, warning=FALSE}
+library(ggplot2)
+library(ggsci)
+data $Outcome= as.factor(data$Outcome)
+ggplot(data = data , mapping = aes(x = Outcome , fill = Outcome))  +
+  geom_bar() + 
+  scale_fill_manual(values = pal_aaas()(2)) + 
+  labs(title = "Diabetes Outcome Distribution" , x = "Outcome (0 = No , 1 = yes )" , y = "count") +
+  theme_minimal()
+```
+
+***Histogram plot for each variable***
+
+```{r , message=FALSE, warning=FALSE}
+library(tidyverse)
+data_long = data %>%
+  gather(key = "variable" , value = "Value" , -Outcome)
+ggplot(data_long, aes(x = Value, fill = Outcome)) +
+  geom_histogram(bins = 30, alpha = 0.7, position = "identity") +
+  facet_wrap(~variable, scales = "free") +   
+  theme_minimal() +
+  labs(title = "Distribution of Numeric Variables by Outcome",
+       x = "Value",
+       y = "Count") +
+  scale_fill_manual(values = c("0" = "#1f77b4", "1" = "#ff7f0e"),
+                    name = "Outcome",
+                    labels = c("Non-Diabetic", "Diabetic"))
+```
+
+***Boxplots for numerical variables according to outcome***
+
+```{r , message=FALSE, warning=FALSE}
+ggplot(data_long, aes(x = Outcome, y = Value, fill = Outcome)) +
+  geom_boxplot() +
+  facet_wrap(~variable, scales = "free") +   
+  labs(title = "Boxplots of Numeric Variables by Outcome",
+       x = "Outcome",
+       y = "Value") +
+  scale_fill_manual(values = c("0" = "#1f77b4", "1" = "#ff7f0e"),
+                    name = "Outcome",
+                    labels = c("Non-Diabetic", "Diabetic"))
+```
+
+***Correlation Heatmap***
+
+```{r , message=FALSE, warning=FALSE}
+library(ggsci)
+data_without_outcome = data[-9]
+str(data)
+newdata_matrix = as.matrix(data_without_outcome)
+dim(newdata_matrix)
+library(pheatmap)
+pheatmap(mat = newdata_matrix , scale = "row" , cluster_cols = T , cluster_rows = T ,
+         cutree_cols = 2 , main = "Variable Clustering" , fontsize_row = 7 , 
+         fontsize_col = 5, color = ggsci::pal_gsea()(5))
+```
+
+***Spearman Rank Correlation Matrix***
+
+```{r , message=FALSE, warning=FALSE}
+vars <- c("Pregnancies", "Glucose", "BloodPressure", "SkinThickness", 
+          "Insulin", "BMI", "Age")
+cor_matrix  <- cor(data[, vars] ,method = "spearman" , use = "complete.obs")
+print(cor_matrix)
+library(corrplot)
+corrplot(cor_matrix , method = "color" , type = "upper", tl.col = "black", tl.srt = 45)
+
+```
+
+## Conclusion
+
+The exploratory data analysis (EDA) provided several important insights into the diabetes dataset. The outcome distribution showed a clear separation between diabetic and non-diabetic individuals, with more non-diabetic cases present. Visualizations such as histograms and boxplots revealed that key variables including **Glucose, BMI, and Insulin** exhibited noticeable differences between the two outcome groups, indicating their strong potential as predictors of diabetes.
+
+The **Correlation Heatmap** further enhanced the analysis by highlighting the relationships between variables. For example, **Age and Pregnancies** showed a moderate positive correlation, which aligns with common demographic patterns. Similarly, **Insulin and SkinThickness** were positively correlated, suggesting a biological link. On the other hand, variables like **BloodPressure** and **Insulin** showed weaker correlations with most others, indicating more independent contributions. Importantly, none of the variables showed correlations high enough to suggest severe overlap between variables, meaning they can provide unique inf
+
+The **clustered heatmap** also revealed patterns of similarity among variables and individuals, providing an additional perspective on how features group together. These findings confirm that variables such as **Glucose, BMI, and Insulin** are central in differentiating between diabetic and non-diabetic cases, while demographic measures like **Age and Pregnancies** contribute additional context.
+
+Overall, this EDA not only highlighted important predictors but also provided a foundation for future **statistical modeling and machine learning approaches** to improve diabetes prediction and risk assessment.
